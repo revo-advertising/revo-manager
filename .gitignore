@@ -1,0 +1,7 @@
+_import/
+*.csv
+*.xlsx
+*.pdf
+revo-manager-*.json
+cachet*
+.DS_Store

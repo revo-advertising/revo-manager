@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 452 160" role="img" aria-label="Revo Manager"><g fill="#020817">
+<path d="M0 100V30C0 12 12 0 30 0H62V24H34C28 24 26 27 26 33V100Z"/>
+<path d="M124 0c31 0 52 21 52 50q0 5-1 10H100c4 11 13 18 26 18 9 0 16-3 22-9l19 15c-10 11-24 18-42 18-32 0-54-21-54-51S94 0 124 0Zm-24 39h51c-3-11-12-18-26-18s-22 7-25 18Z"/>
+<path d="M180 2h30l26 68 26-68h30l-40 98h-32Z"/>
+<path d="M348 0c32 0 55 21 55 51s-23 51-55 51-55-21-55-51S316 0 348 0Zm0 25c-16 0-28 11-28 26s12 26 28 26 28-11 28-26-12-26-28-26Z"/>
+</g><circle cx="428" cy="86" r="15" fill="#00D6FF"/><g fill="none" stroke="#020817" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round"><path transform="translate(3.0 120)" d="M0 28V0L12 17L24 0V28"/><path transform="translate(73.3 120)" d="M0 28L12 0L24 28M5 18H19"/><path transform="translate(143.7 120)" d="M0 28V0L22 28V0"/><path transform="translate(212.0 120)" d="M0 28L12 0L24 28M5 18H19"/><path transform="translate(282.3 120)" d="M24 5Q19 0 13 0C5 0 0 6 0 14S5 28 13 28Q20 28 24 24V15H14"/><path transform="translate(352.7 120)" d="M20 0H0V28H20M0 14H17"/><path transform="translate(419.0 120)" d="M0 28V0H12C19 0 22 3 22 8S19 16 12 16H0M12 16L22 28"/></g></svg>
