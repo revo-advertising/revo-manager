@@ -34,12 +34,13 @@ const DEFAULT_SETTINGS = {
 /* Catégories exclues du résultat d'exploitation */
 const NON_OPERATING = ['Paiement de TVA', 'Impôts sur les résultats', 'Prêts au personnel', 'Prêts aux associés', 'Fond commercial', 'Frais de constitution', 'Retrait', 'Augmentation du capital', 'Remboursement de TVA', 'Versement'];
 
-const emptyDB = () => ({ demo: false, settings: structuredClone(DEFAULT_SETTINGS), accounts: [], contacts: [], todos: [], items: [], docs: [], transactions: [], checks: [], recurring: [], goals: {} });
+const emptyDB = () => ({ settings: structuredClone(DEFAULT_SETTINGS), accounts: [], contacts: [], todos: [], items: [], docs: [], transactions: [], checks: [], recurring: [], goals: {} });
 let DB;
 
 function load() {
   try { DB = JSON.parse(localStorage.getItem(KEY)); } catch (e) { DB = null; }
-  if (!DB || !DB.settings) { DB = demoDB(); save(); }
+  // les anciennes données de démonstration sont effacées ; les données réelles sont conservées
+  if (!DB || !DB.settings || DB.demo) { DB = emptyDB(); save(); }
   // complète les champs société ajoutés ou restés vides
   for (const [k, v] of Object.entries(DEFAULT_SETTINGS.company)) if (!DB.settings.company[k]) DB.settings.company[k] = v;
 }
@@ -128,55 +129,4 @@ function vatFor(from, to) {
   const collected = round(part('invoice') - part('credit'));
   const deductible = round(part('pinvoice') - part('pcredit') + direct);
   return { collected, deductible, net: round(collected - deductible) };
-}
-
-/* ---------- Données de démonstration (fictives) ---------- */
-function demoDB() {
-  const db = emptyDB(); db.demo = true;
-  const Y = new Date().getFullYear(), now = today();
-  const clients = [['Atlas Boissons (démo)', 'Casablanca'], ['Verde Agro (démo)', 'Marrakech'], ['Nova Intérim (démo)', 'Rabat'], ['Campus Horizon (démo)', 'Benguerir'], ['Riad Capital (démo)', 'Casablanca']];
-  clients.forEach(([name, city], i) => db.accounts.push({ id: 'c' + i, ref: formatRef('C-NNN', i + 1, now), type: 'client', name, city, country: 'Maroc', phone: '', email: '', ice: '', address: '' }));
-  [['Imprimerie du Port (démo)', 'Casablanca'], ['Studio Lumière (démo)', 'Rabat']].forEach(([name, city], i) => db.accounts.push({ id: 's' + i, ref: formatRef('F-NNN', i + 1, now), type: 'supplier', name, city, country: 'Maroc', phone: '', email: '', ice: '', address: '' }));
-  db.accounts.push({ id: 'p0', ref: 'P-001', type: 'prospect', name: 'Oasis Retail (démo)', city: 'Agadir', country: 'Maroc', phone: '', email: '', ice: '', address: '' });
-  db.contacts.push({ id: uid(), accountId: 'c0', name: 'Contact Démo', role: 'Direction marketing', email: 'contact@exemple.ma', phone: '' });
-  const services = [['Forfait mensuel création de contenu et réseaux sociaux', 13000], ['Sponsoring mensuel réseaux sociaux', 2000], ['Conception et exécution de supports print', 8500], ['Production vidéo', 24000], ['Goodies et objets publicitaires', 11500]];
-  services.forEach(([name, price], i) => db.items.push({ id: 'a' + i, ref: formatRef('A-AAAA-NNN', i + 1, now), name, type: 'Service', family: 'Famille par défaut', price, tax: 20, description: '' }));
-
-  const counters = {};
-  const mk = (type, date, accountId, picks, status, extra = {}) => {
-    counters[type] = (counters[type] || 0) + 1;
-    const d = { id: uid(), type, ref: formatRef(TYPES[type].pattern, counters[type], date), date, due: addDays(date, 30), accountId, status, subject: services[picks[0][0]][0], discount: 0, notes: 'REVO ADVERTISING vous remercie de votre confiance.', intro: '', terms: '', method: 'Virement bancaire',
-      lines: picks.map(([i, qty, price]) => ({ kind: 'item', itemId: 'a' + i, label: services[i][0], description: '', qty, price: price || services[i][1], discount: 0, tax: 20 })), ...extra };
-    db.docs.push(d); return d;
-  };
-  const pay = (d, ratio, delay) => {
-    let date = addDays(d.date, delay); if (date > now) date = now;
-    db.transactions.push({ id: uid(), kind: d.type === 'invoice' ? 'income' : 'expense', date, amount: round(totals(d).ttc * ratio), category: d.type === 'invoice' ? 'Vente' : 'Marchandises', accountId: d.accountId, method: 'Virement bancaire', docId: d.id, tax: 0, notes: 'Règlement ' + d.ref });
-  };
-  for (let y = Y - 1; y <= Y; y++) {
-    const last = y === Y ? +now.slice(5, 7) : 12;
-    for (let m = 1; m <= last; m++) {
-      const day = k => { const s = `${y}-${String(m).padStart(2, '0')}-${String(k).padStart(2, '0')}`; return s > now ? now : s; };
-      const inv = mk('invoice', day(5), 'c' + (m % 5), [[0, 1], [1, 1 + (m % 3)]], 'validated');
-      const age = daysBetween(inv.date, now);
-      if (age > 100 || m % 3 === 0 && age > 40) pay(inv, 1, 35);
-      else if (age > 45 && m % 2) pay(inv, 0.5, 30);
-      if (m % 2 === 0) { const i2 = mk('invoice', day(14), 'c' + ((m + 2) % 5), [[2 + (m % 3), 1]], 'validated'); if (daysBetween(i2.date, now) > 70) pay(i2, 1, 45); }
-      const bill = mk('pinvoice', day(10), 's' + (m % 2), [[2, 1, 3200 + m * 210]], 'validated');
-      if (daysBetween(bill.date, now) > 40) pay(bill, 1, 30);
-      db.transactions.push({ id: uid(), kind: 'expense', date: day(26), amount: 9500, category: 'Salaires', accountId: '', method: 'Virement bancaire', docId: '', tax: 0, notes: 'Salaires (démo)' });
-    }
-  }
-  mk('estimate', addDays(now, -3), 'p0', [[3, 1], [2, 2]], 'draft');
-  mk('estimate', addDays(now, -9), 'c1', [[4, 2]], 'validated');
-  mk('estimate', addDays(now, -20), 'c2', [[0, 1], [1, 1]], 'accepted');
-  mk('estimate', addDays(now, -34), 'c3', [[3, 2]], 'refused');
-  mk('order', addDays(now, -12), 'c4', [[2, 3]], 'validated');
-  mk('porder', addDays(now, -6), 's0', [[4, 1, 6400]], 'validated');
-  Object.entries(counters).forEach(([k, v]) => db.settings.counters[k] = v + 1);
-  Object.assign(db.settings.counters, { client: 6, supplier: 3, prospect: 2, item: 6 });
-  db.settings.openingBalance = 120000;
-  db.todos.push({ id: uid(), title: 'Relancer le devis Verde Agro', due: addDays(now, 2), accountId: 'c1', done: false });
-  db.recurring.push({ id: uid(), accountId: 'c0', label: services[0][0], amount: 13000, tax: 20, every: 1, nextDate: addDays(now, 4), active: true });
-  return db;
 }

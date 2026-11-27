@@ -341,7 +341,6 @@ ROUTES.data = el => {
   };
   $('#clear', el).onclick = () => {
     if (!confirm('Effacer définitivement toutes les données de Revo Manager dans ce navigateur ?')) return;
-    const settings = DB.demo ? { ...DB.settings, counters: {}, openingBalance: 0 } : DB.settings;
-    DB = { ...emptyDB(), settings }; save(); render(); toast('Données vidées.');
+    DB = { ...emptyDB(), settings: DB.settings }; save(); render(); toast('Données vidées.');
   };
 };

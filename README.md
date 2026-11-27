@@ -15,7 +15,7 @@ Puis ouvrir http://localhost:4173.
 ## Données
 
 Les données sont enregistrées dans le navigateur, sur l'appareil utilisé. Elles ne sont pas dans ce dépôt.
-Un nouveau navigateur démarre avec des données de démonstration fictives.
+Un nouveau navigateur démarre avec une application vide.
 
 Pour retrouver ses données ailleurs : **Réglages → Données et import**, exporter une sauvegarde, puis la restaurer sur l'autre appareil.
 
