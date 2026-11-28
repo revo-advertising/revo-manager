@@ -14,9 +14,17 @@ Puis ouvrir http://localhost:4173.
 
 ## Données
 
-Les données sont enregistrées dans le navigateur, sur l'appareil utilisé. Elles ne sont pas dans ce dépôt.
-Un nouveau navigateur démarre avec une application vide.
+Les données ne sont pas dans ce dépôt.
 
-Pour retrouver ses données ailleurs : **Réglages → Données et import**, exporter une sauvegarde, puis la restaurer sur l'autre appareil.
+- **Sans base configurée** (`js/config.js` vide) : elles restent dans le navigateur utilisé.
+- **Avec une base Supabase** : connexion par email et mot de passe, enregistrement automatique,
+  mêmes données sur tous les appareils, et une version par jour de modification (30 au maximum).
+
+### Mettre en place la base
+
+1. Créer un projet Supabase.
+2. Exécuter `supabase/schema.sql` dans le SQL Editor.
+3. Dans Authentication, créer l'utilisateur, puis désactiver les nouvelles inscriptions.
+4. Renseigner l'adresse du projet et la clé **publique** dans `js/config.js`.
 
 Ne jamais ajouter au dépôt une sauvegarde, un export CSV ou l'image du cachet.

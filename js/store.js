@@ -1,4 +1,4 @@
-/* Données, persistance (navigateur) et calculs */
+/* Données, persistance et calculs */
 const KEY = 'revo-manager-v1';
 const round = n => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
 const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
@@ -41,10 +41,14 @@ function load() {
   try { DB = JSON.parse(localStorage.getItem(KEY)); } catch (e) { DB = null; }
   // les anciennes données de démonstration sont effacées ; les données réelles sont conservées
   if (!DB || !DB.settings || DB.demo) { DB = emptyDB(); save(); }
-  // complète les champs société ajoutés ou restés vides
+  normalize();
+}
+/* complète les champs société ajoutés ou restés vides */
+function normalize() {
   for (const [k, v] of Object.entries(DEFAULT_SETTINGS.company)) if (!DB.settings.company[k]) DB.settings.company[k] = v;
 }
 function save() {
+  if (Cloud.enabled) return cloudSave();
   try { localStorage.setItem(KEY, JSON.stringify(DB)); }
   catch (e) { toast('Enregistrement impossible dans ce navigateur. Exportez une sauvegarde.'); }
 }

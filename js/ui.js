@@ -134,7 +134,7 @@ function render() {
     <main><div class="top"><span>${mod.title} / <b style="color:var(--navy)">${esc(mod.links.find(l => l[0] === linkKey)?.[1] || '')}</b></span><span class="sp"></span>
       <input type="search" id="gsearch" list="gsearch-list" placeholder="Rechercher un document ou un compte…" aria-label="Recherche globale"><datalist id="gsearch-list">${DB.docs.map(d => `<option value="${esc(d.ref)}">${esc(accountName(d.accountId))}</option>`).join('')}${DB.accounts.map(x => `<option value="${esc(x.name)}"></option>`).join('')}</datalist>
       <button class="btn accent" id="gcreate">+ Créer</button></div>
-      ${!DB.docs.length && !DB.accounts.length ? '<div class="demo">Aucune donnée dans ce navigateur. <a href="#/data" style="text-decoration:underline">Restaurer une sauvegarde</a></div>' : ''}
+      ${!Cloud.enabled && !DB.docs.length && !DB.accounts.length ? '<div class="demo">Aucune donnée dans ce navigateur. <a href="#/data" style="text-decoration:underline">Restaurer une sauvegarde</a></div>' : ''}
       <div id="page"></div></main></div>`;
   $('#gsearch').onchange = e => {
     const q = e.target.value.trim().toLowerCase();
@@ -149,8 +149,12 @@ function pageHead(el, title, buttons = '', extra = '') {
   return $('.content', el);
 }
 function start() {
-  load();
-  window.addEventListener('hashchange', () => { closeModal(); render(); window.scrollTo(0, 0); });
+  window.addEventListener('hashchange', () => {
+    if (Cloud.enabled && !Cloud.ready) return;
+    closeModal(); render(); window.scrollTo(0, 0);
+    if (Cloud.enabled) pull();
+  });
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-  render();
+  if (Cloud.enabled) return cloudStart();
+  load(); render();
 }

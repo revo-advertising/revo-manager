@@ -305,12 +305,32 @@ function importAccounts(rows) {
   });
   return `${added} compte(s) importé(s), ${skipped} ignoré(s) (vides ou déjà présents).`;
 }
+/* Lit un fichier de sauvegarde et refuse tout contenu inattendu */
+function parseBackup(text) {
+  const data = JSON.parse(text), base = emptyDB();
+  if (!data.settings || !Object.keys(base).every(k => !Array.isArray(base[k]) || Array.isArray(data[k]))) throw new Error('Sauvegarde invalide.');
+  if (data.docs.some(d => !TYPES[d.type] || !Array.isArray(d.lines) || !/^[\w-]+$/.test(d.id))) throw new Error('Sauvegarde invalide.');
+  if (['accounts', 'transactions'].some(k => data[k].some(r => !/^[\w-]+$/.test(r.id)))) throw new Error('Sauvegarde invalide.');
+  return data;
+}
 ROUTES.data = el => {
   const body = pageHead(el, 'Données et import');
-  body.innerHTML = `<div class="card mb"><h2>Reprendre les données Manageo</h2><p>Sélectionnez ensemble les exports CSV (comptes obligatoire ; pour les documents, « une ligne d'article par ligne »). La reprise remplace les données présentes ici.</p>${field('Exports Manageo (.csv)', '<input type="file" id="manageo" accept=".csv" multiple>')}</div>
-  <div class="grid g2"><div class="card"><h2>Sauvegarde</h2><p>Vos données sont enregistrées uniquement dans ce navigateur, sur cet appareil. Exportez régulièrement une sauvegarde.</p><div class="row"><button class="btn primary" id="backup">Exporter une sauvegarde</button></div><p style="margin-top:18px">${field('Restaurer une sauvegarde (.json)', '<input type="file" id="restore" accept=".json">')}</p></div>
+  const online = Cloud.enabled;
+  body.innerHTML = `${online ? `<div class="card mb"><div class="row"><div><h2>Enregistrement en ligne</h2><p>Chaque modification est enregistrée automatiquement. Connecté : <b>${esc(session()?.email)}</b></p></div><span class="sp"></span><button class="btn" id="signout">Se déconnecter</button></div><h3>Revenir en arrière</h3><p class="muted">La base garde l'état de vos données avant les modifications de chacun des 30 derniers jours travaillés.</p><div class="list" id="history"><div class="muted">Chargement…</div></div></div>` : ''}<div class="card mb"><h2>Reprendre les données Manageo</h2><p>Sélectionnez ensemble les exports CSV (comptes obligatoire ; pour les documents, « une ligne d'article par ligne »). La reprise remplace les données présentes ici.</p>${field('Exports Manageo (.csv)', '<input type="file" id="manageo" accept=".csv" multiple>')}</div>
+  <div class="grid g2"><div class="card"><h2>${online ? 'Copie de vos données (facultatif)' : 'Sauvegarde'}</h2><p>${online ? 'Vous pouvez télécharger une copie complète quand vous le souhaitez.' : 'Vos données sont enregistrées uniquement dans ce navigateur, sur cet appareil. Exportez régulièrement une sauvegarde.'}</p><div class="row"><button class="btn primary" id="backup">Exporter une sauvegarde</button></div><p style="margin-top:18px">${field('Restaurer une sauvegarde (.json)', '<input type="file" id="restore" accept=".json">')}</p></div>
   <div class="card"><h2>Importer des comptes (CSV)</h2><p>Colonne obligatoire : Entreprise. Colonnes reconnues : Référence, Type, ICE, Adresse, Ville, Pays, Téléphone, Email.</p>${field('Fichier CSV (UTF-8)', '<input type="file" id="csv" accept=".csv,text/csv">')}</div>
-  <div class="card"><h2>Démarrer avec mes vraies données</h2><p>Efface toutes les données de ce navigateur et garde les réglages. Pensez ensuite à régler la numérotation.</p><button class="btn danger" id="clear">Vider les données</button></div></div>`;
+  ${online ? '' : '<div class="card"><h2>Démarrer avec mes vraies données</h2><p>Efface toutes les données de ce navigateur et garde les réglages. Pensez ensuite à régler la numérotation.</p><button class="btn danger" id="clear">Vider les données</button></div>'}</div>`;
+  if (online) {
+    $('#signout', el).onclick = signOut;
+    const box = $('#history', el);
+    listHistory().then(rows => {
+      box.innerHTML = rows.map(r => `<div><span>Avant les modifications du ${fdate(r.day)}</span><button class="btn sm" data-version="${r.id}">Revenir à cette version</button></div>`).join('') || '<div class="muted">Aucune version antérieure pour le moment.</div>';
+    }, () => { box.innerHTML = '<div class="muted">Historique indisponible pour le moment.</div>'; });
+    box.onclick = e => {
+      const id = e.target.dataset.version;
+      if (id && confirm('Revenir à cette version ? Les changements faits depuis seront remplacés.')) restoreHistory(id).then(() => toast('Version restaurée.'), err => toast(err.message));
+    };
+  }
   $('#manageo', el).onchange = async e => {
     try {
       const files = await Promise.all([...e.target.files].map(async f => ({ name: f.name, text: await f.text() })));
@@ -326,10 +346,7 @@ ROUTES.data = el => {
   $('#restore', el).onchange = async e => {
     const f = e.target.files[0]; if (!f) return;
     try {
-      const data = JSON.parse(await f.text()), base = emptyDB();
-      if (!data.settings || !Object.keys(base).every(k => !Array.isArray(base[k]) || Array.isArray(data[k]))) throw 0;
-      if (data.docs.some(d => !TYPES[d.type] || !Array.isArray(d.lines) || !/^[\w-]+$/.test(d.id))) throw 0;
-      if (['accounts', 'transactions'].some(k => data[k].some(r => !/^[\w-]+$/.test(r.id)))) throw 0;
+      const data = parseBackup(await f.text());
       if (!confirm('Remplacer toutes les données actuelles par cette sauvegarde ?')) return;
       DB = data; save(); render(); toast('Sauvegarde restaurée.');
     } catch (err) { toast("Ce fichier n'est pas une sauvegarde Revo Manager valide."); }
@@ -339,7 +356,7 @@ ROUTES.data = el => {
     try { const msg = importAccounts(parseCSV(await f.text())); save(); toast(msg); } catch (err) { toast(err.message); }
     e.target.value = '';
   };
-  $('#clear', el).onclick = () => {
+  if ($('#clear', el)) $('#clear', el).onclick = () => {
     if (!confirm('Effacer définitivement toutes les données de Revo Manager dans ce navigateur ?')) return;
     DB = { ...emptyDB(), settings: DB.settings }; save(); render(); toast('Données vidées.');
   };
